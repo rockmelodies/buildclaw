@@ -23,6 +23,7 @@ from app.core.workflow import WorkflowEngine
 from app.models import DeploymentTrigger
 from app.plugins.command_deploy import CommandDeployPlugin
 from app.plugins.git_pull import GitPullPlugin
+from app.runtime_checks import collect_runtime_checks, prepare_runtime_directories
 from app.services.deployments import DeploymentService
 from app.services.repositories import RepositoryCatalog
 
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     _configure_logging()
 
     config = load_config()
+    prepare_runtime_directories(config)
     event_bus = AsyncEventBus()
     registry = PluginRegistry()
     registry.register(GitPullPlugin())
@@ -72,6 +74,15 @@ app = FastAPI(title="BuildClaw Backend", version="0.1.0", lifespan=lifespan)
 async def healthz() -> dict[str, str]:
     """Return a minimal health payload for container and load-balancer probes."""
     return {"status": "ok"}
+
+
+@app.get("/readyz")
+async def readyz(request: Request) -> JSONResponse:
+    """Return readiness diagnostics for deployment-capable runtime conditions."""
+
+    checks = collect_runtime_checks(request.app.state.config)
+    status_code = 200 if checks["ok"] else 503
+    return JSONResponse(status_code=status_code, content=checks)
 
 
 @app.post("/webhooks/github/{repo_id}")

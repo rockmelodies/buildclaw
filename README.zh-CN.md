@@ -17,6 +17,8 @@ BuildClaw 是一个基于 FastAPI 的自动化部署后端，目标是接收 Git
 - 提供 `git_pull` 插件负责代码同步
 - 提供 `command_deploy` 插件负责命令式部署
 - 支持按分支规则进行精确匹配和通配匹配
+- 支持 `.env`、`doctor` 环境自检和 `/readyz` 就绪检查
+- 自带原生安装脚本、Docker 部署资产、systemd 和 Nginx 模板
 
 ## 目录
 
@@ -26,6 +28,7 @@ BuildClaw 是一个基于 FastAPI 的自动化部署后端，目标是接收 Git
 - [仓库结构](#仓库结构)
 - [快速开始](#快速开始)
 - [配置说明](#配置说明)
+- [部署资产](#部署资产)
 - [GitHub Webhook 配置](#github-webhook-配置)
 - [详细部署指南](#详细部署指南)
 - [运维与排障](#运维与排障)
@@ -134,7 +137,14 @@ cd buildclaw
 
 ```bash
 cd backend
-python -m pip install -e .
+./scripts/install.sh
+```
+
+Windows PowerShell 可使用：
+
+```powershell
+cd backend
+.\scripts\install.ps1
 ```
 
 ### 3. 准备配置文件
@@ -162,6 +172,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 
 ```bash
 curl http://127.0.0.1:8080/healthz
+curl http://127.0.0.1:8080/readyz
 ```
 
 预期返回：
@@ -183,6 +194,11 @@ backend/config.yaml
 ```bash
 BUILDCLAW_CONFIG=/path/to/config.yaml
 ```
+
+同时也支持从以下文件读取环境变量：
+
+- `backend/.env`
+- 由 `BUILDCLAW_ENV_FILE` 指定的 dotenv 文件
 
 ### 配置结构示例
 
@@ -234,6 +250,28 @@ BuildClaw 按以下优先级匹配：
 当前每次部署都会自动先插入一个隐式的 `git_pull` 步骤，然后再执行你在分支规则中配置的步骤。
 
 也就是说，`steps` 中配置的是“代码同步成功之后”要执行的部署动作。
+
+## 部署资产
+
+现在仓库已经自带一套完整的环境交付资产：
+
+- `backend/.env.example`：环境变量示例
+- `backend/scripts/install.sh`：Linux/macOS 一键安装脚本
+- `backend/scripts/install.ps1`：Windows 一键安装脚本
+- `backend/scripts/doctor.py`：环境就绪自检
+- `backend/Dockerfile`：容器镜像构建文件
+- `backend/docker-compose.yml`：单机容器部署
+- `backend/deploy/systemd/buildclaw.service`：systemd 服务模板
+- `backend/deploy/nginx/buildclaw.conf`：Nginx 反向代理模板
+
+你可以随时手动执行环境自检：
+
+```bash
+cd backend
+python scripts/doctor.py
+```
+
+`/readyz` 则适合给容器探针、反向代理和运维监控使用。
 
 ## GitHub Webhook 配置
 
@@ -322,6 +360,25 @@ curl -X POST "http://127.0.0.1:8080/webhooks/github/buildclaw" \
 - 可以打包构建
 - 可以执行 shell 脚本
 - 可以调用 Ansible / Fabric / Makefile / 自研发布工具
+
+### 容器化部署路径
+
+如果你更希望通过 Docker 运行 BuildClaw：
+
+```bash
+cd backend
+cp .env.example .env
+cp config.example.yaml config.yaml
+docker compose up --build -d
+```
+
+启动后检查：
+
+```bash
+curl http://127.0.0.1:8080/readyz
+docker compose ps
+docker compose logs -f
+```
 
 ### 推荐的生产环境部署方式
 

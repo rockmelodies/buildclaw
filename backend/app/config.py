@@ -90,6 +90,7 @@ class AppConfig:
 
 def load_config() -> AppConfig:
     """Load configuration from YAML and overlay supported environment variables."""
+    _load_dotenv_files()
     config_path = Path(os.getenv("BUILDCLAW_CONFIG", "config.yaml"))
     if not config_path.exists():
         raise FileNotFoundError(f"config file {config_path!s} not found")
@@ -102,6 +103,42 @@ def load_config() -> AppConfig:
     )
     config.validate()
     return config
+
+
+def _load_dotenv_files() -> None:
+    """Load supported `.env` files into the process environment if unset.
+
+    Precedence is:
+    1. existing process environment
+    2. file from `BUILDCLAW_ENV_FILE`
+    3. local `.env`
+    """
+
+    candidate_paths: list[Path] = []
+    custom_env_path = os.getenv("BUILDCLAW_ENV_FILE")
+    if custom_env_path:
+        candidate_paths.append(Path(custom_env_path))
+    candidate_paths.append(Path(".env"))
+
+    for path in candidate_paths:
+        if not path.exists():
+            continue
+        _apply_env_file(path)
+
+
+def _apply_env_file(path: Path) -> None:
+    """Parse a minimal dotenv file format without overriding existing env vars."""
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 def _parse_server(raw: dict[str, Any]) -> ServerConfig:

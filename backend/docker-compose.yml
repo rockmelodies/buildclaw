@@ -1,0 +1,23 @@
+services:
+  buildclaw:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: buildclaw-backend:local
+    env_file:
+      - .env
+    environment:
+      BUILDCLAW_CONFIG: /app/config.yaml
+      BUILDCLAW_WORKSPACE: /app/workspace
+    ports:
+      - "${BUILDCLAW_PORT:-8080}:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./workspace:/app/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

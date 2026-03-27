@@ -1,0 +1,19 @@
+[Unit]
+Description=BuildClaw FastAPI backend
+After=network.target
+
+[Service]
+Type=simple
+User=buildclaw
+Group=buildclaw
+WorkingDirectory=/opt/buildclaw/backend
+EnvironmentFile=/opt/buildclaw/backend/.env
+Environment=BUILDCLAW_CONFIG=/opt/buildclaw/backend/config.yaml
+ExecStart=/opt/buildclaw/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+ExecStartPre=/opt/buildclaw/backend/.venv/bin/python /opt/buildclaw/backend/scripts/doctor.py
+Restart=always
+RestartSec=3
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
