@@ -1,0 +1,39 @@
+# Network binding for the FastAPI service itself.
+server:
+  address: "0.0.0.0"
+  port: 8080
+
+# Root directory where checked-out repositories are stored locally.
+workspace_root: "./workspace"
+
+# Repository-level deployment configuration.
+repositories:
+  - id: "buildclaw"
+    name: "buildclaw"
+    git_url: "https://github.com/rockmelodies/buildclaw.git"
+    webhook_secret: "replace-me"
+    auth:
+      # Use HTTPS token authentication when SSH is not configured.
+      https_username: "git"
+      https_token: ""
+      # Optional base64-encoded private key for SSH-based cloning.
+      ssh_private_key_base64: ""
+    branches:
+      # Exact branch rule.
+      - pattern: "main"
+        steps:
+          - name: "deploy-main"
+            plugin: "command_deploy"
+            config:
+              command: ["go", "test", "./..."]
+              working_dir: "backend"
+              timeout_sec: 300
+      # Prefix wildcard rule.
+      - pattern: "feature/*"
+        steps:
+          - name: "preview-check"
+            plugin: "command_deploy"
+            config:
+              command: ["go", "test", "./..."]
+              working_dir: "backend"
+              timeout_sec: 300
