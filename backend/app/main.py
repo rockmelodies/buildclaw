@@ -11,10 +11,12 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import load_config
 from app.core.event_bus import AsyncEventBus
@@ -68,6 +70,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="BuildClaw Backend", version="0.1.0", lifespan=lifespan)
+UI_DIR = Path(__file__).resolve().parent / "ui"
+app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def dashboard() -> FileResponse:
+    """Serve the operator dashboard."""
+
+    return FileResponse(UI_DIR / "index.html")
 
 
 @app.get("/healthz")
@@ -83,6 +94,16 @@ async def readyz(request: Request) -> JSONResponse:
     checks = collect_runtime_checks(request.app.state.config)
     status_code = 200 if checks["ok"] else 503
     return JSONResponse(status_code=status_code, content=checks)
+
+
+@app.get("/api/v1/dashboard")
+async def api_dashboard(request: Request) -> JSONResponse:
+    """Return dashboard data for the browser UI and external consumers."""
+
+    deployments: DeploymentService = request.app.state.deployments
+    data = await deployments.get_dashboard_data()
+    data["runtime"] = collect_runtime_checks(request.app.state.config)
+    return JSONResponse(status_code=200, content=data)
 
 
 @app.post("/webhooks/github/{repo_id}")
@@ -117,7 +138,7 @@ async def github_webhook(repo_id: str, request: Request) -> JSONResponse:
     branch = event["branch"]
     commit_sha = event["commit_sha"]
 
-    await deployments.trigger_deployment(
+    deployment_id = await deployments.trigger_deployment(
         DeploymentTrigger(
             repository_id=repo_id,
             branch=branch,
@@ -128,7 +149,13 @@ async def github_webhook(repo_id: str, request: Request) -> JSONResponse:
 
     return JSONResponse(
         status_code=202,
-        content={"status": "accepted", "repo_id": repo_id, "branch": branch, "commit": commit_sha},
+        content={
+            "status": "accepted",
+            "deployment_id": deployment_id,
+            "repo_id": repo_id,
+            "branch": branch,
+            "commit": commit_sha,
+        },
     )
 
 

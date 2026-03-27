@@ -27,17 +27,22 @@ class WorkflowEngine:
         self._registry = registry
         self._event_bus = event_bus
 
-    async def execute(self, plan: WorkflowPlan) -> None:
-        """Run all steps in order and publish deployment lifecycle events."""
-        await self._event_bus.publish(Event(type=EVENT_DEPLOYMENT_STARTED, payload=plan))
+    def create_step_context(self, plan: WorkflowPlan) -> StepContext:
+        """Build the shared plugin execution context for a workflow plan."""
 
-        context = StepContext(
+        return StepContext(
             repository_id=plan.repository_id,
             branch=plan.branch,
             commit_sha=plan.commit_sha,
             work_dir=plan.work_dir,
             logger=plan.logger,
         )
+
+    async def execute(self, plan: WorkflowPlan) -> None:
+        """Run all steps in order and publish deployment lifecycle events."""
+        await self._event_bus.publish(Event(type=EVENT_DEPLOYMENT_STARTED, payload=plan))
+
+        context = self.create_step_context(plan)
 
         for step in plan.steps:
             await self._event_bus.publish(

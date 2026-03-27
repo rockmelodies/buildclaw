@@ -2,6 +2,7 @@ from __future__ import annotations
 """Shared in-memory data structures used across services and plugins."""
 
 import logging
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -43,3 +44,25 @@ class WorkflowPlan:
     work_dir: Path
     steps: list[WorkflowStep]
     logger: logging.Logger
+
+
+@dataclass(slots=True)
+class DeploymentRecord:
+    """In-memory representation of a deployment execution lifecycle."""
+
+    deployment_id: str
+    repository_id: str
+    branch: str
+    commit_sha: str
+    delivery_id: str
+    status: str
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    work_dir: str = ""
+    matched_pattern: str = ""
+    steps_total: int = 0
+    steps_completed: int = 0
+    active_step: str = ""
+    error: str = ""
+    recent_logs: list[str] = field(default_factory=list)
