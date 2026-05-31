@@ -14,6 +14,7 @@ from hashlib import sha256
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import load_config
@@ -97,6 +98,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="BuildClaw Backend", version="0.2.0", lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
@@ -158,6 +167,103 @@ async def github_webhook(repo_id: str, request: Request) -> JSONResponse:
         status_code=202,
         content={"status": "accepted", "repo_id": repo_id, "branch": branch, "commit": commit_sha},
     )
+
+
+# ---------------------------------------------------------------------------
+# Dashboard & Repository API Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/dashboard")
+async def dashboard(request: Request) -> JSONResponse:
+    """Return aggregated dashboard data for the operator console."""
+    config = request.app.state.config
+    memory_manager: BuildMemoryManager | None = getattr(request.app.state, "memory_manager", None)
+    runtime = collect_runtime_checks(config)
+
+    repositories = []
+    for repo in config.repositories:
+        repositories.append({
+            "id": repo.id,
+            "name": repo.name,
+            "git_url": repo.git_url,
+            "webhook_path": f"/webhooks/github/{repo.id}",
+            "branch_rules": [
+                {
+                    "pattern": branch.pattern,
+                    "worktree": branch.worktree,
+                    "steps": [
+                        {"name": step.name, "plugin": step.plugin}
+                        for step in branch.steps
+                    ],
+                }
+                for branch in repo.branches
+            ],
+        })
+
+    knowledge_summary: dict[str, Any] | None = None
+    if memory_manager:
+        recipes = memory_manager.knowledge_base.list_recipes()
+        learnings = list(memory_manager.knowledge_base._repo_learnings.values())
+        knowledge_summary = {
+            "enabled": True,
+            "recipe_count": len(recipes),
+            "repo_learning_count": len(learnings),
+            "total_builds_tracked": sum(l.total_builds for l in learnings),
+        }
+    else:
+        knowledge_summary = {"enabled": False}
+
+    return JSONResponse(content={
+        "version": "0.2.0",
+        "summary": {
+            "repositories": len(repositories),
+            "runtime_ok": runtime["ok"],
+            "knowledge_enabled": config.knowledge.enabled,
+            "recipe_count": knowledge_summary.get("recipe_count", 0),
+            "repo_learning_count": knowledge_summary.get("repo_learning_count", 0),
+        },
+        "runtime": runtime,
+        "repositories": repositories,
+        "knowledge": knowledge_summary,
+        "config": {
+            "workspace_root": config.workspace_root,
+            "knowledge_root": config.knowledge.knowledge_root,
+        },
+    })
+
+
+@app.get("/api/v1/repositories")
+async def list_repositories(request: Request) -> JSONResponse:
+    """List configured repositories and branch deployment rules."""
+    config = request.app.state.config
+    repositories = []
+    for repo in config.repositories:
+        repositories.append({
+            "id": repo.id,
+            "name": repo.name,
+            "git_url": repo.git_url,
+            "webhook_path": f"/webhooks/github/{repo.id}",
+            "has_https_token": bool(repo.auth.https_token),
+            "has_ssh_key": bool(repo.auth.ssh_private_key_base64),
+            "branch_rules": [
+                {
+                    "pattern": branch.pattern,
+                    "worktree": branch.worktree,
+                    "steps": [
+                        {
+                            "name": step.name,
+                            "plugin": step.plugin,
+                            "config": step.config,
+                        }
+                        for step in branch.steps
+                    ],
+                }
+                for branch in repo.branches
+            ],
+        })
+
+    return JSONResponse(content={"repositories": repositories, "total": len(repositories)})
 
 
 # ---------------------------------------------------------------------------

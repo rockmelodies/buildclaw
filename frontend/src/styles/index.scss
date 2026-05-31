@@ -1,0 +1,67 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  font-family:
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  background: $bg-color;
+}
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-card {
+  border-radius: 12px;
+}
+
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: var(--el-bg-color);
+  border: 1px solid $border-color;
+
+  .label {
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+  }
+
+  .value {
+    margin-top: 8px;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+.muted {
+  color: var(--el-text-color-secondary);
+}
+
+.mono {
+  font-family: Consolas, "Courier New", monospace;
+}
