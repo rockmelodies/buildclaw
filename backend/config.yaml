@@ -6,6 +6,15 @@ server:
 # Root directory where checked-out repositories are stored locally.
 workspace_root: "./workspace"
 
+# Build knowledge base configuration for intelligent build orchestration.
+knowledge:
+  enabled: true
+  knowledge_root: "./knowledge"
+  auto_detect: true
+  auto_learn: true
+  apply_workarounds: true
+  max_retry_with_workaround: 2
+
 # Repository-level deployment configuration.
 repositories:
   - id: "buildclaw"
@@ -19,16 +28,16 @@ repositories:
       # Optional base64-encoded private key for SSH-based cloning.
       ssh_private_key_base64: ""
     branches:
-      # Exact branch rule.
+      # Exact branch rule — using smart_build for intelligent auto-detection.
       - pattern: "main"
         steps:
-          - name: "deploy-main"
-            plugin: "command_deploy"
+          - name: "smart-build-main"
+            plugin: "smart_build"
             config:
-              command: ["go", "test", "./..."]
-              working_dir: "backend"
-              timeout_sec: 300
-      # Prefix wildcard rule.
+              phases: ["install", "build"]
+              skip_tests: false
+              apply_workarounds: true
+      # Prefix wildcard rule — using traditional command_deploy.
       - pattern: "feature/*"
         steps:
           - name: "preview-check"

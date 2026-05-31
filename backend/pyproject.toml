@@ -1,7 +1,7 @@
 [project]
 name = "buildclaw-backend"
-version = "0.1.0"
-description = "Webhook-driven auto deploy backend for BuildClaw"
+version = "0.2.0"
+description = "Webhook-driven auto deploy backend for BuildClaw with intelligent build orchestration"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0,<1.0.0",

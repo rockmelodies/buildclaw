@@ -52,10 +52,22 @@ class RepositoryConfig:
 
 
 @dataclass(slots=True)
+class KnowledgeConfig:
+    """Configuration for the build knowledge base and intelligent build system."""
+    enabled: bool = True
+    knowledge_root: str = "./knowledge"
+    auto_detect: bool = True
+    auto_learn: bool = True
+    apply_workarounds: bool = True
+    max_retry_with_workaround: int = 2
+
+
+@dataclass(slots=True)
 class AppConfig:
     """Top-level application configuration object."""
     server: ServerConfig = field(default_factory=ServerConfig)
     workspace_root: str = "./workspace"
+    knowledge: KnowledgeConfig = field(default_factory=KnowledgeConfig)
     repositories: list[RepositoryConfig] = field(default_factory=list)
 
     def validate(self) -> None:
@@ -99,6 +111,7 @@ def load_config() -> AppConfig:
     config = AppConfig(
         server=_parse_server(raw.get("server") or {}),
         workspace_root=os.getenv("BUILDCLAW_WORKSPACE", raw.get("workspace_root", "./workspace")),
+        knowledge=_parse_knowledge(raw.get("knowledge") or {}),
         repositories=_parse_repositories(raw.get("repositories") or []),
     )
     config.validate()
@@ -194,3 +207,15 @@ def _parse_branches(raw_branches: list[dict[str, Any]]) -> list[BranchConfig]:
             )
         )
     return branches
+
+
+def _parse_knowledge(raw: dict[str, Any]) -> KnowledgeConfig:
+    """Parse knowledge base configuration with environment variable overrides."""
+    return KnowledgeConfig(
+        enabled=bool(raw.get("enabled", True)),
+        knowledge_root=os.getenv("BUILDCLAW_KNOWLEDGE_ROOT", raw.get("knowledge_root", "./knowledge")),
+        auto_detect=bool(raw.get("auto_detect", True)),
+        auto_learn=bool(raw.get("auto_learn", True)),
+        apply_workarounds=bool(raw.get("apply_workarounds", True)),
+        max_retry_with_workaround=int(raw.get("max_retry_with_workaround", 2)),
+    )

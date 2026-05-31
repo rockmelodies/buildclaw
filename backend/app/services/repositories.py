@@ -20,11 +20,6 @@ class RepositoryCatalog:
         except KeyError as exc:
             raise KeyError(f"repository {repository_id!r} not found") from exc
 
-    def list(self) -> list[RepositoryConfig]:
-        """Return repositories in configuration order for UI and API consumers."""
-
-        return list(self._repositories.values())
-
     def resolve_branch(self, repository_id: str, branch: str) -> tuple[RepositoryConfig, BranchConfig, Path]:
         """Resolve the effective branch rule and local worktree path.
 

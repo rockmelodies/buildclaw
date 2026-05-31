@@ -6,34 +6,44 @@ server:
 # Root directory where checked-out repositories are stored locally.
 workspace_root: "./workspace"
 
+# Build knowledge base configuration for intelligent build orchestration.
+# When enabled, BuildClaw will auto-detect project types, use build recipes,
+# learn from build outcomes, and apply workarounds automatically.
+knowledge:
+  enabled: false
+  knowledge_root: "./knowledge"
+  auto_detect: true
+  auto_learn: true
+  apply_workarounds: true
+  max_retry_with_workaround: 2
+
 # Repository-level deployment configuration.
 repositories:
-  - id: "buildclaw"
-    name: "buildclaw"
-    git_url: "https://github.com/rockmelodies/buildclaw.git"
+  - id: "my-project"
+    name: "My Project"
+    git_url: "https://github.com/example/repo.git"
     webhook_secret: "replace-me"
     auth:
-      # Use HTTPS token authentication when SSH is not configured.
       https_username: "git"
       https_token: ""
-      # Optional base64-encoded private key for SSH-based cloning.
       ssh_private_key_base64: ""
     branches:
-      # Exact branch rule.
+      # Example: smart_build with auto-detection for main branch
       - pattern: "main"
         steps:
-          - name: "deploy-main"
-            plugin: "command_deploy"
+          - name: "smart-build"
+            plugin: "smart_build"
             config:
-              command: ["go", "test", "./..."]
-              working_dir: "backend"
-              timeout_sec: 300
-      # Prefix wildcard rule.
+              phases: ["install", "test", "build", "deploy"]
+              skip_tests: false
+              apply_workarounds: true
+              max_retry_with_workaround: 2
+
+      # Example: traditional command_deploy for feature branches
       - pattern: "feature/*"
         steps:
-          - name: "preview-check"
+          - name: "run-tests"
             plugin: "command_deploy"
             config:
-              command: ["go", "test", "./..."]
-              working_dir: "backend"
+              command: ["npm", "test"]
               timeout_sec: 300
