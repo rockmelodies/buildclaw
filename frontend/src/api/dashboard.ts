@@ -1,21 +1,27 @@
-import http from "@/utils/request";
-import type { DashboardData, RepositoryItem } from "./types";
+import http, { type HttpConfig } from "@/utils/request";
+import type { DashboardData, RepositoryItem, RuntimeStatus } from "./types";
 
 const DashboardAPI = {
-  getDashboard() {
-    return http.get<unknown, DashboardData>("/api/v1/dashboard");
+  getDashboard(config?: HttpConfig) {
+    return http.get<unknown, DashboardData>("/api/v1/dashboard", config);
   },
-  getReadyz() {
-    return http.get<unknown, import("./types").RuntimeStatus>("/readyz");
+  getReadyz(config?: HttpConfig) {
+    return http.get<unknown, RuntimeStatus>("/readyz", {
+      ...config,
+      validateStatus: (status) => status === 200 || status === 503,
+    });
   },
-  getHealthz() {
-    return http.get<unknown, { status: string }>("/healthz");
+  getHealthz(config?: HttpConfig) {
+    return http.get<unknown, { status: string }>("/healthz", config);
   },
 };
 
 const RepositoryAPI = {
-  list() {
-    return http.get<unknown, { repositories: RepositoryItem[]; total: number }>("/api/v1/repositories");
+  list(config?: HttpConfig) {
+    return http.get<unknown, { repositories: RepositoryItem[]; total: number }>(
+      "/api/v1/repositories",
+      config,
+    );
   },
 };
 

@@ -10,9 +10,9 @@ export const useAppStore = defineStore("app", () => {
     sidebarCollapsed.value = !sidebarCollapsed.value;
   }
 
-  function toggleDark() {
-    isDark.value = !isDark.value;
-    document.documentElement.classList.toggle("dark", isDark.value);
+  function setDark(value: boolean) {
+    isDark.value = value;
+    document.documentElement.classList.toggle("dark", value);
   }
 
   function setLocale(value: "zh-CN" | "en") {
@@ -28,7 +28,7 @@ export const useAppStore = defineStore("app", () => {
     sidebarCollapsed,
     isDark,
     toggleSidebar,
-    toggleDark,
+    setDark,
     setLocale,
     initTheme,
   };

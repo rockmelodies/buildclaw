@@ -7,6 +7,15 @@
       </div>
     </div>
 
+    <el-alert
+      v-if="knowledgeDisabled"
+      type="warning"
+      show-icon
+      :closable="false"
+      title="Knowledge system is disabled. Enable knowledge.enabled in config.yaml."
+      style="margin-bottom: 12px"
+    />
+
     <el-card class="page-card" shadow="never">
       <el-form inline>
         <el-form-item :label="t('detect.selectRepo')">
@@ -15,7 +24,7 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="detecting" :disabled="!selectedRepo" @click="runDetect">
+          <el-button type="primary" :loading="detecting" :disabled="!selectedRepo || knowledgeDisabled" @click="runDetect">
             {{ t("common.run") }}
           </el-button>
         </el-form-item>
@@ -53,7 +62,7 @@
 
 <script setup lang="ts">
 import { RepositoryAPI } from "@/api/dashboard";
-import KnowledgeAPI from "@/api/knowledge";
+import KnowledgeAPI, { isKnowledgeEnabled } from "@/api/knowledge";
 import type { DetectResult, RepositoryItem } from "@/api/types";
 
 defineOptions({ name: "Detect" });
@@ -64,6 +73,7 @@ const detecting = ref(false);
 const repositories = ref<RepositoryItem[]>([]);
 const selectedRepo = ref("");
 const result = ref<DetectResult | null>(null);
+const knowledgeDisabled = ref(false);
 
 async function loadRepositories() {
   repoLoading.value = true;
@@ -88,7 +98,10 @@ async function runDetect() {
   }
 }
 
-onMounted(loadRepositories);
+onMounted(async () => {
+  await loadRepositories();
+  knowledgeDisabled.value = !(await isKnowledgeEnabled());
+});
 </script>
 
 <style scoped lang="scss">

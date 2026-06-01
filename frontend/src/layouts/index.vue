@@ -35,16 +35,16 @@
           </el-breadcrumb>
         </div>
         <div class="navbar-right">
-          <el-select v-model="localeValue" size="small" style="width: 110px" @change="handleLocaleChange">
+          <el-select :model-value="appStore.locale" size="small" style="width: 110px" @change="handleLocaleChange">
             <el-option label="简体中文" value="zh-CN" />
             <el-option label="English" value="en" />
           </el-select>
           <el-switch
-            v-model="darkValue"
+            :model-value="appStore.isDark"
             inline-prompt
             active-text="Dark"
             inactive-text="Light"
-            @change="appStore.toggleDark()"
+            @change="(val) => appStore.setDark(Boolean(val))"
           />
           <el-button type="primary" plain @click="refreshPage">
             <el-icon><Refresh /></el-icon>
@@ -87,13 +87,6 @@ const activeMenu = computed(() => route.path);
 const currentTitle = computed(() => {
   const metaTitle = route.meta.title as string | undefined;
   return metaTitle ? t(`menu.${metaTitle}`) : "";
-});
-
-const localeValue = ref(appStore.locale);
-const darkValue = ref(appStore.isDark);
-
-onMounted(() => {
-  appStore.initTheme();
 });
 
 function handleLocaleChange(value: "zh-CN" | "en") {

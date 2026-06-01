@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import KnowledgeAPI from "@/api/knowledge";
 import type { BuildRecipeSummary } from "@/api/types";
+import { isHttpStatus } from "@/utils/request";
 
 defineOptions({ name: "Recipes" });
 
@@ -58,11 +59,13 @@ async function loadData() {
   loading.value = true;
   disabled.value = false;
   try {
-    const data = await KnowledgeAPI.listRecipes();
+    const data = await KnowledgeAPI.listRecipes({ silent: true });
     recipes.value = data.recipes;
   } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
-    if (status === 503) disabled.value = true;
+    if (isHttpStatus(error, 503)) {
+      disabled.value = true;
+      recipes.value = [];
+    }
   } finally {
     loading.value = false;
   }
@@ -70,9 +73,13 @@ async function loadData() {
 
 async function openDetail(projectType: string) {
   detailTitle.value = projectType;
-  const data = await KnowledgeAPI.getRecipe(projectType);
-  detailJson.value = JSON.stringify(data, null, 2);
-  drawerVisible.value = true;
+  try {
+    const data = await KnowledgeAPI.getRecipe(projectType);
+    detailJson.value = JSON.stringify(data, null, 2);
+    drawerVisible.value = true;
+  } catch {
+    // 错误提示由 request 拦截器处理
+  }
 }
 
 onMounted(loadData);

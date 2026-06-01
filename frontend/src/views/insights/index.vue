@@ -97,6 +97,7 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import KnowledgeAPI from "@/api/knowledge";
 import type { BuildInsights } from "@/api/types";
+import { isHttpStatus } from "@/utils/request";
 
 type RecipeInsight = BuildInsights["recipe_insights"][number];
 type RepoInsight = BuildInsights["repo_insights"][number];
@@ -120,7 +121,7 @@ let repoChart: echarts.ECharts | null = null;
 function renderCharts() {
   if (!insights.value) return;
 
-  if (recipeChartRef.value) {
+  if (recipeChartRef.value && insights.value.recipe_insights.length) {
     recipeChart ||= echarts.init(recipeChartRef.value);
     recipeChart.setOption({
       tooltip: { trigger: "axis" },
@@ -143,7 +144,7 @@ function renderCharts() {
     });
   }
 
-  if (repoChartRef.value) {
+  if (repoChartRef.value && insights.value.repo_insights.length) {
     repoChart ||= echarts.init(repoChartRef.value);
     repoChart.setOption({
       tooltip: { trigger: "axis" },
@@ -171,21 +172,28 @@ async function loadData() {
   loading.value = true;
   disabled.value = false;
   try {
-    insights.value = await KnowledgeAPI.getInsights();
+    insights.value = await KnowledgeAPI.getInsights({ silent: true });
     await nextTick();
     renderCharts();
   } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
-    if (status === 503) disabled.value = true;
+    if (isHttpStatus(error, 503)) {
+      disabled.value = true;
+      insights.value = null;
+    }
   } finally {
     loading.value = false;
   }
 }
 
 async function loadTextReport() {
-  const data = await KnowledgeAPI.getInsightsText();
-  textReport.value = data.report;
-  textDialogVisible.value = true;
+  if (disabled.value) return;
+  try {
+    const data = await KnowledgeAPI.getInsightsText();
+    textReport.value = data.report;
+    textDialogVisible.value = true;
+  } catch {
+    // 错误提示由 request 拦截器处理
+  }
 }
 
 function handleResize() {

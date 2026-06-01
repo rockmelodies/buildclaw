@@ -94,33 +94,11 @@ class DeploymentService:
             )
         ]
 
-        # Check if we should auto-inject smart_build steps
-        auto_detect_enabled = (
-            self._memory_manager is not None
-            and hasattr(self, '_repositories')
-            and True  # Will be checked against config below
-        )
-
-        # If the branch rule uses smart_build or env_learn, add those steps
-        # If auto_detect is enabled and no explicit steps are configured,
-        # inject a smart_build step automatically
-        has_explicit_smart_build = any(
-            step.plugin in ("smart_build", "env_learn")
+        # Append branch-specific deployment steps after git pull.
+        steps.extend(
+            WorkflowStep(name=step.name or step.plugin, plugin=step.plugin, config=step.config)
             for step in branch_rule.steps
         )
-
-        if has_explicit_smart_build or (not branch_rule.steps and self._memory_manager):
-            # Use the intelligent build system
-            steps.extend(
-                WorkflowStep(name=step.name or step.plugin, plugin=step.plugin, config=step.config)
-                for step in branch_rule.steps
-            )
-        else:
-            # Use traditional command_deploy steps
-            steps.extend(
-                WorkflowStep(name=step.name or step.plugin, plugin=step.plugin, config=step.config)
-                for step in branch_rule.steps
-            )
 
         plan = WorkflowPlan(
             repository_id=trigger.repository_id,

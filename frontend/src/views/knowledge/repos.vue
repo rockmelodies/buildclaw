@@ -48,6 +48,7 @@
 <script setup lang="ts">
 import KnowledgeAPI from "@/api/knowledge";
 import type { RepoLearningSummary } from "@/api/types";
+import { isHttpStatus } from "@/utils/request";
 
 defineOptions({ name: "RepoLearnings" });
 
@@ -63,11 +64,13 @@ async function loadData() {
   loading.value = true;
   disabled.value = false;
   try {
-    const data = await KnowledgeAPI.listRepoLearnings();
+    const data = await KnowledgeAPI.listRepoLearnings({ silent: true });
     repos.value = data.repos;
   } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
-    if (status === 503) disabled.value = true;
+    if (isHttpStatus(error, 503)) {
+      disabled.value = true;
+      repos.value = [];
+    }
   } finally {
     loading.value = false;
   }
@@ -75,9 +78,13 @@ async function loadData() {
 
 async function openDetail(repoId: string) {
   detailTitle.value = repoId;
-  const data = await KnowledgeAPI.getRepoLearning(repoId);
-  detailJson.value = JSON.stringify(data, null, 2);
-  drawerVisible.value = true;
+  try {
+    const data = await KnowledgeAPI.getRepoLearning(repoId);
+    detailJson.value = JSON.stringify(data, null, 2);
+    drawerVisible.value = true;
+  } catch {
+    // 错误提示由 request 拦截器处理
+  }
 }
 
 onMounted(loadData);
